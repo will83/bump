@@ -18,19 +18,19 @@ function DownloadPage() {
       const response = await fetch(`${API_BASE}/api/transfer/${transferId}`)
 
       if (response.status === 404) {
-        setError('Ce transfert n\'existe pas ou a expiré')
+        setError('This transfer does not exist or has expired')
         setLoading(false)
         return
       }
 
       if (!response.ok) {
-        throw new Error('Erreur lors de la récupération du transfert')
+        throw new Error('Error loading transfer')
       }
 
       const data = await response.json()
       setTransfer(data)
     } catch (err) {
-      setError(err.message || 'Une erreur est survenue')
+      setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
     }
@@ -54,7 +54,7 @@ function DownloadPage() {
       <div className="download-page">
         <div className="loading">
           <div className="loading-spinner"></div>
-          <p>Chargement...</p>
+          <p>Loading...</p>
         </div>
       </div>
     )
@@ -71,9 +71,9 @@ function DownloadPage() {
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
           </div>
-          <h2>Oups !</h2>
+          <h2>Oops!</h2>
           <p>{error}</p>
-          <a href="/" className="btn-secondary">Créer un nouveau transfert</a>
+          <a href="/" className="btn-secondary">Create a new transfer</a>
         </div>
       </div>
     )
@@ -84,7 +84,7 @@ function DownloadPage() {
   return (
     <div className="download-page">
       <div className="download-header">
-        <h2>{transfer.files.length} fichier{transfer.files.length > 1 ? 's' : ''}</h2>
+        <h2>{transfer.files.length} file{transfer.files.length > 1 ? 's' : ''}</h2>
         <p className="download-meta">
           {formatSize(totalSize)} · {formatTimeRemaining(transfer.expiresAt)}
         </p>
@@ -113,7 +113,7 @@ function DownloadPage() {
 
       {transfer.files.length > 1 && (
         <button onClick={downloadAll} className="btn-primary">
-          Tout télécharger
+          Download all
         </button>
       )}
     </div>

@@ -29,19 +29,19 @@ export function formatTimeRemaining(expiresAt) {
   const expires = new Date(expiresAt)
   const diff = expires - now
 
-  if (diff <= 0) return 'Expiré'
+  if (diff <= 0) return 'Expired'
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
 
   if (days > 0) {
-    return `${days}j ${hours}h restants`
+    return `${days}d ${hours}h remaining`
   }
   if (hours > 0) {
-    return `${hours}h restantes`
+    return `${hours}h remaining`
   }
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  return `${minutes}min restantes`
+  return `${minutes}min remaining`
 }
 
 /**

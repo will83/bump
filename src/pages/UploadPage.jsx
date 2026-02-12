@@ -232,8 +232,8 @@ function UploadPage() {
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </div>
-        <h2>C'est parti !</h2>
-        <p className="success-subtitle">{files.length} fichier{files.length > 1 ? 's' : ''} prêt{files.length > 1 ? 's' : ''} à partager</p>
+        <h2>Ready to share!</h2>
+        <p className="success-subtitle">{files.length} file{files.length > 1 ? 's' : ''} ready to share</p>
 
         <div className="share-link-container">
           <input
@@ -243,12 +243,12 @@ function UploadPage() {
             className="share-link-input"
           />
           <button onClick={handleCopy} className="copy-btn">
-            {copied ? 'Copié !' : 'Copier'}
+            {copied ? 'Copied!' : 'Copy'}
           </button>
         </div>
 
         <button onClick={reset} className="btn-secondary">
-          Nouveau transfert
+          New transfer
         </button>
       </div>
     )
@@ -261,7 +261,7 @@ function UploadPage() {
         <div className="upload-progress-container">
           <div className="upload-progress-bar" style={{ width: `${progress}%` }}></div>
         </div>
-        <p className="upload-progress-text">{progress}% — Upload en cours...</p>
+        <p className="upload-progress-text">{progress}% — Uploading...</p>
       </div>
     )
   }
@@ -294,11 +294,11 @@ function UploadPage() {
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
             </div>
-            <p className="dropzone-text">Glisse tes fichiers ici</p>
-            <p className="dropzone-subtext">ou clique pour sélectionner · jusqu'à 5 Go</p>
+            <p className="dropzone-text">Drop your files here</p>
+            <p className="dropzone-subtext">or click to select · up to 5 GB</p>
           </>
         ) : (
-          <p className="dropzone-add-more">+ Ajouter d'autres fichiers</p>
+          <p className="dropzone-add-more">+ Add more files</p>
         )}
       </div>
 
@@ -326,7 +326,7 @@ function UploadPage() {
           {error && <p className="error-message">{error}</p>}
 
           <button onClick={uploadFiles} className="btn-primary">
-            Bump {files.length} fichier{files.length > 1 ? 's' : ''} · {formatSize(totalSize)}
+            Bump {files.length} file{files.length > 1 ? 's' : ''} · {formatSize(totalSize)}
           </button>
         </>
       )}
