@@ -343,6 +343,60 @@ body {
   justify-content: space-between;
 }
 
+.file-item-folder {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.file-item-folder:hover {
+  background: var(--bg-tertiary);
+}
+
+.folder-group {
+  list-style: none;
+}
+
+.folder-chevron {
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.folder-chevron svg {
+  width: 100%;
+  height: 100%;
+}
+
+.folder-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.folder-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.folder-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.folder-contents {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.file-item-nested {
+  margin-left: 32px;
+  border-left: 2px solid var(--border);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
 .file-info {
   flex: 1;
   display: flex;

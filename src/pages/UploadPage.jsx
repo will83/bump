@@ -2,85 +2,6 @@ import { useState, useRef } from 'react'
 import { API_BASE } from '../config'
 import { generateTransferId, formatSize, copyToClipboard } from '../utils'
 
-// Tree node component for folder structure
-function FileTreeNode({ folder, path, collapsed, toggleFolder, removeFile, getFolderSize, getFolderFileCount, formatSize, isRoot }) {
-  const folderNames = Object.keys(folder.__folders).sort()
-  const files = folder.__files
-
-  return (
-    <>
-      {/* Render subfolders */}
-      {folderNames.map(name => {
-        const subFolder = folder.__folders[name]
-        const fullPath = path ? `${path}/${name}` : name
-        const isCollapsed = collapsed[fullPath]
-        const fileCount = getFolderFileCount(subFolder)
-        const folderSize = getFolderSize(subFolder)
-
-        return (
-          <div key={fullPath} className="tree-folder">
-            <div
-              className="tree-folder-header"
-              onClick={() => toggleFolder(fullPath)}
-            >
-              <span className={`tree-chevron ${isCollapsed ? 'collapsed' : ''}`}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </span>
-              <span className="tree-folder-icon">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/>
-                </svg>
-              </span>
-              <span className="tree-folder-name">{name}</span>
-              <span className="tree-folder-meta">{fileCount} file{fileCount > 1 ? 's' : ''} · {formatSize(folderSize)}</span>
-            </div>
-            {!isCollapsed && (
-              <div className="tree-folder-content">
-                <FileTreeNode
-                  folder={subFolder}
-                  path={fullPath}
-                  collapsed={collapsed}
-                  toggleFolder={toggleFolder}
-                  removeFile={removeFile}
-                  getFolderSize={getFolderSize}
-                  getFolderFileCount={getFolderFileCount}
-                  formatSize={formatSize}
-                />
-              </div>
-            )}
-          </div>
-        )
-      })}
-
-      {/* Render files at this level */}
-      {files.map(({ file, index, name }) => (
-        <div key={index} className="tree-file">
-          <span className="tree-file-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-          </span>
-          <span className="tree-file-name">{name}</span>
-          <span className="tree-file-size">{formatSize(file.size)}</span>
-          <button
-            className="tree-file-remove"
-            onClick={(e) => { e.stopPropagation(); removeFile(index) }}
-            aria-label="Remove"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-      ))}
-    </>
-  )
-}
-
 function UploadPage() {
   const [files, setFiles] = useState([])
   const [uploading, setUploading] = useState(false)
@@ -89,55 +10,39 @@ function UploadPage() {
   const [copied, setCopied] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [error, setError] = useState(null)
-  const [collapsed, setCollapsed] = useState({})
+  const [expandedFolders, setExpandedFolders] = useState({})
   const inputRef = useRef(null)
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0)
 
-  // Build tree structure from flat file list
-  const buildTree = (files) => {
-    const tree = { __files: [], __folders: {} }
+  // Group files by top-level folder
+  const groupFiles = (files) => {
+    const groups = { __root: [] }
 
     files.forEach((file, index) => {
       const parts = file.name.split('/')
-      let current = tree
-
-      for (let i = 0; i < parts.length - 1; i++) {
-        const folder = parts[i]
-        if (!current.__folders[folder]) {
-          current.__folders[folder] = { __files: [], __folders: {} }
+      if (parts.length === 1) {
+        groups.__root.push({ file, index, displayName: file.name })
+      } else {
+        const folder = parts[0]
+        if (!groups[folder]) {
+          groups[folder] = []
         }
-        current = current.__folders[folder]
+        groups[folder].push({
+          file,
+          index,
+          displayName: parts.slice(1).join('/'),
+          shortName: parts[parts.length - 1]
+        })
       }
-
-      current.__files.push({ file, index, name: parts[parts.length - 1] })
     })
 
-    return tree
+    return groups
   }
 
-  const toggleFolder = (path) => {
-    setCollapsed(prev => ({ ...prev, [path]: !prev[path] }))
+  const toggleFolder = (folderPath) => {
+    setExpandedFolders(prev => ({ ...prev, [folderPath]: !prev[folderPath] }))
   }
-
-  const getFolderSize = (folder) => {
-    let size = folder.__files.reduce((sum, f) => sum + f.file.size, 0)
-    Object.values(folder.__folders).forEach(sub => {
-      size += getFolderSize(sub)
-    })
-    return size
-  }
-
-  const getFolderFileCount = (folder) => {
-    let count = folder.__files.length
-    Object.values(folder.__folders).forEach(sub => {
-      count += getFolderFileCount(sub)
-    })
-    return count
-  }
-
-  const fileTree = buildTree(files)
-  const hasSubfolders = Object.keys(fileTree.__folders).length > 0
 
   const handleFiles = (newFiles) => {
     const fileArray = Array.from(newFiles).filter(file => {
@@ -395,6 +300,10 @@ function UploadPage() {
     )
   }
 
+  const grouped = groupFiles(files)
+  const folders = Object.keys(grouped).filter(k => k !== '__root').sort()
+  const rootFiles = grouped.__root
+
   // État par défaut - sélection de fichiers
   return (
     <div className="upload-page">
@@ -433,19 +342,79 @@ function UploadPage() {
 
       {files.length > 0 && (
         <>
-          <div className="file-tree">
-            <FileTreeNode
-              folder={fileTree}
-              path=""
-              collapsed={collapsed}
-              toggleFolder={toggleFolder}
-              removeFile={removeFile}
-              getFolderSize={getFolderSize}
-              getFolderFileCount={getFolderFileCount}
-              formatSize={formatSize}
-              isRoot
-            />
-          </div>
+          <ul className="file-list">
+            {/* Folders */}
+            {folders.map(folder => {
+              const folderFiles = grouped[folder]
+              const folderSize = folderFiles.reduce((sum, f) => sum + f.file.size, 0)
+              const isExpanded = expandedFolders[folder]
+
+              return (
+                <li key={folder} className="folder-group">
+                  <div
+                    className="file-item file-item-folder"
+                    onClick={() => toggleFolder(folder)}
+                  >
+                    <span className={`folder-chevron ${isExpanded ? 'expanded' : ''}`}>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="9 18 15 12 9 6"></polyline>
+                      </svg>
+                    </span>
+                    <span className="folder-icon">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/>
+                      </svg>
+                    </span>
+                    <span className="file-name">{folder}</span>
+                    <span className="file-size">{folderFiles.length} file{folderFiles.length > 1 ? 's' : ''} · {formatSize(folderSize)}</span>
+                  </div>
+
+                  {isExpanded && (
+                    <ul className="folder-contents">
+                      {folderFiles.map((item) => (
+                        <li key={item.index} className="file-item file-item-nested">
+                          <div className="file-info">
+                            <span className="file-name">{item.shortName}</span>
+                            <span className="file-size">{formatSize(item.file.size)}</span>
+                          </div>
+                          <button
+                            className="file-remove"
+                            onClick={(e) => { e.stopPropagation(); removeFile(item.index) }}
+                            aria-label="Remove"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="18" y1="6" x2="6" y2="18"></line>
+                              <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              )
+            })}
+
+            {/* Root files */}
+            {rootFiles.map((item) => (
+              <li key={item.index} className="file-item">
+                <div className="file-info">
+                  <span className="file-name">{item.displayName}</span>
+                  <span className="file-size">{formatSize(item.file.size)}</span>
+                </div>
+                <button
+                  className="file-remove"
+                  onClick={() => removeFile(item.index)}
+                  aria-label="Remove"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </li>
+            ))}
+          </ul>
 
           {error && <p className="error-message">{error}</p>}
 
