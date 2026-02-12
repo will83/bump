@@ -19,8 +19,8 @@ export async function onRequestPost(context) {
     // Calcule la taille totale
     const totalSize = files.reduce((sum, f) => sum + f.size, 0)
 
-    // Date d'expiration = maintenant + 10 minutes (TEST - remettre 7 jours après)
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    // Date d'expiration = maintenant + 7 jours
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
     // Crée le transfert dans D1
     await env.DB.prepare(`
