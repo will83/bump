@@ -1,0 +1,12 @@
+name = "bump"
+compatibility_date = "2024-12-01"
+pages_build_output_dir = "./dist"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "bump-files"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bump-db"
+database_id = "09105e88-8ab2-49fa-a36e-4d4f437b7211"
