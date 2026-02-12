@@ -17,7 +17,7 @@ function App() {
         </Routes>
       </main>
       <footer className="footer">
-        <p>Fichiers supprimés automatiquement après 7 jours</p>
+        <p>Files automatically deleted after 7 days</p>
       </footer>
     </div>
   )
