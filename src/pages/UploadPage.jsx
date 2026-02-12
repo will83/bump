@@ -81,17 +81,28 @@ function UploadPage() {
     const items = e.dataTransfer.items
     if (!items || items.length === 0) return
 
-    const allFiles = []
+    // Collecter les entries SYNCHRONEMENT avant tout await
+    // car dataTransfer.items est une collection "live" qui se vide
+    const entries = []
+    const directFiles = []
 
-    for (const item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
       const entry = item.webkitGetAsEntry?.()
       if (entry) {
-        const files = await traverseDirectory(entry)
-        allFiles.push(...files)
+        entries.push(entry)
       } else if (item.kind === 'file') {
         const file = item.getAsFile()
-        if (file) allFiles.push(file)
+        if (file) directFiles.push(file)
       }
+    }
+
+    // Maintenant on peut faire les awaits
+    const allFiles = [...directFiles]
+
+    for (const entry of entries) {
+      const files = await traverseDirectory(entry)
+      allFiles.push(...files)
     }
 
     if (allFiles.length > 0) {
