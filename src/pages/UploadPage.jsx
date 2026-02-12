@@ -20,6 +20,49 @@ function UploadPage() {
     setError(null)
   }
 
+  // Parcourt récursivement un dossier pour extraire tous les fichiers
+  const traverseDirectory = async (entry, path = '') => {
+    const files = []
+
+    if (entry.isFile) {
+      const file = await new Promise((resolve) => entry.file(resolve))
+      // Ajoute le chemin relatif au nom si dans un sous-dossier
+      if (path) {
+        Object.defineProperty(file, 'name', {
+          value: `${path}/${file.name}`,
+          writable: false
+        })
+      }
+      files.push(file)
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader()
+      const entries = await new Promise((resolve) => {
+        const allEntries = []
+        const readEntries = () => {
+          reader.readEntries(async (batch) => {
+            if (batch.length === 0) {
+              resolve(allEntries)
+            } else {
+              allEntries.push(...batch)
+              readEntries()
+            }
+          })
+        }
+        readEntries()
+      })
+
+      for (const childEntry of entries) {
+        const childFiles = await traverseDirectory(
+          childEntry,
+          path ? `${path}/${entry.name}` : entry.name
+        )
+        files.push(...childFiles)
+      }
+    }
+
+    return files
+  }
+
   const handleDrag = (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -30,17 +73,77 @@ function UploadPage() {
     }
   }
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files)
+
+    const items = e.dataTransfer.items
+    if (!items || items.length === 0) return
+
+    const allFiles = []
+
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry?.()
+      if (entry) {
+        const files = await traverseDirectory(entry)
+        allFiles.push(...files)
+      } else if (item.kind === 'file') {
+        const file = item.getAsFile()
+        if (file) allFiles.push(file)
+      }
+    }
+
+    if (allFiles.length > 0) {
+      handleFiles(allFiles)
     }
   }
 
   const removeFile = (index) => {
     setFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Upload direct vers R2 via presigned URL
+  const uploadFile = async (file, transferId, onProgress) => {
+    const encodedName = encodeURIComponent(file.name)
+
+    // 1. Obtenir la presigned URL
+    const presignResponse = await fetch(
+      `${API_BASE}/api/presign/${transferId}/${encodedName}`
+    )
+
+    if (!presignResponse.ok) {
+      throw new Error(`Erreur presign: ${presignResponse.status}`)
+    }
+
+    const { url } = await presignResponse.json()
+
+    // 2. Upload direct vers R2
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest()
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable && onProgress) {
+          onProgress(e.loaded, e.total)
+        }
+      })
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve()
+        } else {
+          reject(new Error(`Erreur upload: ${xhr.status}`))
+        }
+      })
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Erreur réseau'))
+      })
+
+      xhr.open('PUT', url)
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream')
+      xhr.send(file)
+    })
   }
 
   const uploadFiles = async () => {
@@ -51,28 +154,21 @@ function UploadPage() {
     setError(null)
 
     const transferId = generateTransferId()
-    let uploadedBytes = 0
+    let totalUploaded = 0
 
     try {
       // Upload chaque fichier
-      for (const file of files) {
-        const response = await fetch(
-          `${API_BASE}/api/upload/${transferId}/${encodeURIComponent(file.name)}`,
-          {
-            method: 'POST',
-            body: file,
-            headers: {
-              'Content-Type': file.type || 'application/octet-stream'
-            }
-          }
-        )
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const previousFilesSize = files.slice(0, i).reduce((sum, f) => sum + f.size, 0)
 
-        if (!response.ok) {
-          throw new Error(`Erreur upload: ${response.status}`)
-        }
+        await uploadFile(file, transferId, (loaded, total) => {
+          const overallProgress = previousFilesSize + loaded
+          setProgress(Math.round((overallProgress / totalSize) * 100))
+        })
 
-        uploadedBytes += file.size
-        setProgress(Math.round((uploadedBytes / totalSize) * 100))
+        totalUploaded += file.size
+        setProgress(Math.round((totalUploaded / totalSize) * 100))
       }
 
       // Finaliser le transfert
@@ -188,7 +284,7 @@ function UploadPage() {
               </svg>
             </div>
             <p className="dropzone-text">Glisse tes fichiers ici</p>
-            <p className="dropzone-subtext">ou clique pour sélectionner</p>
+            <p className="dropzone-subtext">ou clique pour sélectionner · jusqu'à 5 Go</p>
           </>
         ) : (
           <p className="dropzone-add-more">+ Ajouter d'autres fichiers</p>
